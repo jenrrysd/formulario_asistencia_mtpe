@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Asistencia - HNERM USST</title>
+    <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HNERM</h1>
+            <h2>USST (Unidad de Seguridad y Salud en el Trabajo)</h2>
+            <h3>TEMA: INDUCCIÓN EN SEGURIDAD Y SALUD EN EL TRABAJO</h3>
+        </div>
+
+        <!-- Temporizador visible -->
+        <div class="temporizador">
+            <span class="temporizador-texto">Tiempo restante: </span>
+            <span id="tiempo_restante" class="temporizador-valor">30:00</span>
+            <span class="temporizador-texto"> minutos</span>
+        </div>
+
+        <!-- Contador de asistencias -->
+        <div class="contador">
+            <span>✅ Asistencias registradas: </span>
+            <span id="contador_valor">0</span>
+        </div>
+
+        <!-- Panel de control del administrador (siempre visible) -->
+        <!-- <div id="panel_admin" class="panel-admin oculta">
+            <h4>⏱️ Iniciar temporizador</h4>
+            <div class="form-group-inline">
+                <input type="number" id="minutos_inicio" min="5" max="120" value="30" placeholder="Minutos">
+                <button id="btn_iniciar_temporizador" class="btn-tiempo">▶️ Iniciar</button>
+            </div>
+            <button id="btn_cerrar_sesion_simple" class="btn-cerrar">Cerrar sesión</button>
+        </div> -->
+
+        <!-- Formulario -->
+        <form id="formulario_asistencia">
+            <div class="form-group">
+                <label for="apellido_paterno">Apellido Paterno *</label>
+                <input type="text" id="apellido_paterno" required>
+            </div>
+            <div class="form-group">
+                <label for="apellido_materno">Apellido Materno *</label>
+                <input type="text" id="apellido_materno" required>
+            </div>
+            <div class="form-group">
+                <label for="nombres">Nombres *</label>
+                <input type="text" id="nombres" required>
+            </div>
+            <div class="form-group">
+                <label for="dni">DNI *</label>
+                <!-- <input type="number" id="dni" required minlength="8" maxlength="8"> -->
+                <input type="text" id="dni" inputmode="numeric" pattern="[0-9]*" maxlength="8" required placeholder="Ej: 78945612">
+            </div>
+            <div class="form-group">
+                <label for="cargo_puesto">Cargo / Puesto *</label>
+                <input type="text" id="cargo_puesto" required>
+            </div>
+            <div class="form-group">
+                <label for="area_seccion">Área / Sección / Servicio *</label>
+                <input type="text" id="area_seccion" required>
+            </div>
+            <div class="form-group">
+                <label>Fecha y Hora (automático)</label>
+                <div id="fecha_hora_mostrada" class="fecha-hora">--/--/---- --:--:--</div>
+            </div>
+
+            <button type="submit" class="btn" id="btn_registrar" disabled>
+                Registrar Asistencia
+            </button>
+        </form>
+
+        <!-- Zona de administrador (siempre visible) -->
+        <div id="zona_admin" class="zona-admin">
+            <h4>🔐 Acceso de Administrador</h4>
+            
+            <!-- Panel de login (se oculta cuando está logueado) -->
+            <div id="panel_login" class="panel-login">
+                <div class="form-group">
+                    <label for="admin_usuario">Usuario</label>
+                    <input type="text" id="admin_usuario" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label for="admin_clave">Contraseña</label>
+                    <input type="password" id="admin_clave" placeholder="••••••••">
+                </div>
+                <button id="btn_login_admin" class="btn-admin">Iniciar Sesión</button>
+
+                <!-- Log de intentos fallidos -->
+                <div id="log_intentos" class="log-intentos oculta">
+                    <p>ℹ️ Últimos intentos: <span id="texto_intentos"></span></p>
+                </div>
+            </div>
+
+            <!-- Panel de controles de admin (se muestra cuando está logueado) -->
+            <div id="zona_controles" class="zona-controles oculta">
+                <p>✅ Sesión de administrador activa.</p>
+
+                <!-- ✅ Panel para INICIAR/EXTENDER el temporizador (siempre visible) -->
+                <div id="panel_tiempo" class="control-tiempo">
+                    <h4 id="titulo_tiempo">▶️ Iniciar sesión de inducción</h4>
+                    <div class="form-group-inline">
+                        <input type="number" id="minutos_tiempo" min="1" max="120" value="30" placeholder="Minutos">
+                        <button id="btn_accion_tiempo" class="btn-tiempo">▶️ Iniciar temporizador</button>
+                    </div>
+                    <p id="ayuda_tiempo" class="ayuda">El temporizador debe iniciarse antes de registrar asistencias.</p>
+                </div>
+
+                <!-- ✅ Panel para DETENER el temporizador (solo cuando está activo) -->
+                <div id="panel_detener_temporizador" class="control-tiempo oculta">
+                    <h4>⏹️ Control de sesión activa</h4>
+                    <button id="btn_detener_temporizador" class="btn-detener">⏹️ Detener temporizador y cerrar formulario</button>
+                    <p class="ayuda">Esto detendrá el tiempo y cerrará el formulario inmediatamente.</p>
+                </div>
+
+                <button id="btn_descargar_todo" class="btn-descargar">
+                    📥 Descargar CSV con todas las asistencias
+                </button>
+
+                <!-- ✅ Botón limpiar -->
+                <button id="btn_limpiar_registros" class="btn-limpiar">
+                    🧹 Limpiar todos los registros
+                </button>
+
+                <button id="btn_cerrar_sesion" class="btn-cerrar">Cerrar sesión</button>
+            </div>
+        </div>
+
+        <div id="mensaje_respuesta"></div>
+
+        <footer>
+            <p>Formulario local — Creado por Jenrry Soto Dextre
+            Página web: <a target="_blank" href="https://dextre.xyz">https://dextre.xyz</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

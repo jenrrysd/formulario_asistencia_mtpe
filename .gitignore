@@ -1,0 +1,19 @@
+# Archivos de configuración sensibles
+.env
+config.json
+
+# Archivos de estado y datos
+estado.json
+
+# Archivos temporales
+*.tmp
+*.log
+
+# Directorios de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
