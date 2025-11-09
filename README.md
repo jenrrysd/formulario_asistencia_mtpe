@@ -7,13 +7,13 @@ Sistema web para registro de asistencias en sesiones de inducción de Seguridad 
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow.svg)
 ![License](https://img.shields.io/badge/License-MIT-red.svg)
 
-## � Características
+## 🚀 Características
 
 - ✅ **Registro de asistencias** con validación de DNI
 - ⏱️ **Temporizador configurable** para sesiones
 - 👨‍💼 **Panel de administración** seguro
-- 📊 **Exportación a CSV** para análisis
-- 🔐 **Sistema de autenticación** robusto
+- 📊 **Exportación a Excel (.xlsx)** con formato profesional
+-  **Sistema de autenticación** robusto
 - 📱 **Interfaz responsive** para dispositivos móviles
 - 🧹 **Gestión de registros** (limpiar, descargar)
 - ⏰ **Extensión de tiempo** en vivo
@@ -22,7 +22,8 @@ Sistema web para registro de asistencias en sesiones de inducción de Seguridad 
 
 ### Requisitos
 - Python 3.7 o superior
-- Flask
+- Flask 2.0+
+- openpyxl (para exportación Excel)
 - Navegador web moderno
 
 ### Pasos de instalación
@@ -35,7 +36,7 @@ cd formulario-asistencia
 
 2. **Instala las dependencias**:
 ```bash
-pip install flask
+pip install -r requirements.txt
 ```
 
 3. **Configura las credenciales**:
@@ -105,8 +106,8 @@ ADMIN_CLAVE=tu_contraseña_muy_segura_123!
 
 - **Registros soportados**: Hasta 500+ sin problemas de rendimiento
 - **Tamaño máximo estimado**: ~250 KB para 500 registros
-- **Formato de exportación**: CSV compatible con Excel
-- **Campos por registro**: 7 campos principales + timestamp del servidor
+- **Formato de exportación**: Excel (.xlsx) con estilos profesionales
+- **Campos por registro**: 9 campos principales + timestamp del servidor
 
 ## 🛠️ Arquitectura
 
@@ -137,7 +138,7 @@ ADMIN_CLAVE=tu_contraseña_muy_segura_123!
 | `POST` | `/api/detener` | Detener temporizador |
 | `POST` | `/api/registrar` | Registrar nueva asistencia |
 | `POST` | `/api/limpiar` | Limpiar todos los registros |
-| `GET` | `/api/descargar` | Descargar CSV |
+| `GET` | `/api/descargar-excel` | Descargar Excel (.xlsx) |
 
 ## 🤝 Contribuir
 

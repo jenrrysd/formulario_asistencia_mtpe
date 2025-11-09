@@ -1,8 +1,11 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, make_response
 import json, logging
 import os, socket
 from datetime import datetime
 import hashlib
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 # Cargar configuración desde archivo .env si existe
 def cargar_configuracion():
@@ -27,6 +30,13 @@ def cargar_configuracion():
 # Configuración de seguridad
 ADMIN_USUARIO, ADMIN_CLAVE = cargar_configuracion()
 ADMIN_CLAVE_HASH = hashlib.sha256(ADMIN_CLAVE.encode()).hexdigest()
+
+# Variable global para manejar sesión única
+admin_sesion_activa = {
+    "token": None,
+    "timestamp": None,
+    "ip": None
+}
 
 def obtener_ip_local():
     """Obtiene la IP LAN de la máquina (ej: 192.168.1.87)"""
@@ -81,15 +91,36 @@ def login_admin():
     data = request.json
     usuario = data.get('usuario', '').strip()
     clave = data.get('clave', '')
+    cliente_ip = request.remote_addr
     
     # Validar credenciales
     if usuario == ADMIN_USUARIO:
         clave_hash = hashlib.sha256(clave.encode()).hexdigest()
         if clave_hash == ADMIN_CLAVE_HASH:
+            # Verificar si ya hay una sesión activa
+            if admin_sesion_activa["token"] is not None:
+                # Hay una sesión activa, verificar si es de la misma IP
+                if admin_sesion_activa["ip"] != cliente_ip:
+                    return jsonify({
+                        "ok": False,
+                        "error": "Ya hay un administrador conectado desde otra ubicación. Solo se permite una sesión activa."
+                    }), 403
+                else:
+                    # Misma IP, permitir reconexión (renovar token)
+                    pass
+            
+            # Generar nuevo token único
+            nuevo_token = hashlib.sha256(f"{usuario}{clave}{datetime.now().isoformat()}{cliente_ip}".encode()).hexdigest()[:16]
+            
+            # Actualizar sesión activa
+            admin_sesion_activa["token"] = nuevo_token
+            admin_sesion_activa["timestamp"] = datetime.now().isoformat()
+            admin_sesion_activa["ip"] = cliente_ip
+            
             return jsonify({
                 "ok": True,
                 "mensaje": "Login exitoso",
-                "admin_token": hashlib.sha256(f"{usuario}{clave}{datetime.now().isoformat()}".encode()).hexdigest()[:16]
+                "admin_token": nuevo_token
             })
     
     return jsonify({
@@ -97,13 +128,77 @@ def login_admin():
         "error": "Credenciales incorrectas"
     }), 401
 
+def verificar_token_admin(token, cliente_ip):
+    """Verifica si el token es válido y corresponde a la sesión activa"""
+    if not token or admin_sesion_activa["token"] is None:
+        return False
+    
+    # Verificar token y IP
+    if (admin_sesion_activa["token"] == token and 
+        admin_sesion_activa["ip"] == cliente_ip):
+        return True
+    
+    return False
+
+@app.route('/api/verificar-sesion', methods=['POST'])
+def verificar_sesion():
+    """Endpoint para verificar si la sesión sigue siendo válida"""
+    data = request.json
+    token = data.get('token', '')
+    cliente_ip = request.remote_addr
+    
+    if verificar_token_admin(token, cliente_ip):
+        return jsonify({
+            "ok": True,
+            "sesion_valida": True,
+            "mensaje": "Sesión válida"
+        })
+    else:
+        return jsonify({
+            "ok": False,
+            "sesion_valida": False,
+            "mensaje": "Sesión inválida o expirada"
+        }), 401
+
+@app.route('/api/cerrar-sesion', methods=['POST'])
+def cerrar_sesion():
+    """Endpoint para cerrar la sesión activa"""
+    data = request.json
+    token = data.get('token', '')
+    cliente_ip = request.remote_addr
+    
+    # Verificar que quien cierra sea el usuario logueado
+    if verificar_token_admin(token, cliente_ip):
+        # Limpiar sesión activa
+        admin_sesion_activa["token"] = None
+        admin_sesion_activa["timestamp"] = None
+        admin_sesion_activa["ip"] = None
+        
+        return jsonify({
+            "ok": True,
+            "mensaje": "Sesión cerrada correctamente"
+        })
+    else:
+        return jsonify({
+            "ok": False,
+            "mensaje": "No tienes una sesión activa válida"
+        }), 401
+
 @app.route('/api/estado', methods=['GET'])
 def obtener_estado():
-    return jsonify(cargar_estado())
+    estado = cargar_estado()
+    # Agregar información de sesión (sin exponer datos sensibles)
+    estado["sesion_admin_activa"] = admin_sesion_activa["token"] is not None
+    return jsonify(estado)
 
 @app.route('/api/iniciar', methods=['POST'])
 def iniciar_temporizador():
+    # Verificar token de administrador
     data = request.json
+    token = data.get('admin_token', '')
+    if not verificar_token_admin(token, request.remote_addr):
+        return jsonify({"ok": False, "error": "Token de administrador inválido"}), 401
+    
     minutos = data.get('minutos', 30)
     tiempo_segundos = minutos * 60
     
@@ -145,7 +240,12 @@ def registrar_asistencia():
 
 @app.route('/api/extender', methods=['POST'])
 def extender_temporizador():
+    # Verificar token de administrador
     data = request.json
+    token = data.get('admin_token', '')
+    if not verificar_token_admin(token, request.remote_addr):
+        return jsonify({"ok": False, "error": "Token de administrador inválido"}), 401
+    
     minutos_extra = data.get('minutos', 10)
     
     estado = cargar_estado()
@@ -182,6 +282,12 @@ def extender_temporizador():
 
 @app.route('/api/detener', methods=['POST'])
 def detener_temporizador():
+    # Verificar token de administrador
+    data = request.json
+    token = data.get('admin_token', '')
+    if not verificar_token_admin(token, request.remote_addr):
+        return jsonify({"ok": False, "error": "Token de administrador inválido"}), 401
+    
     estado = cargar_estado()
     estado['tiempo_restante'] = 0
     estado['tiempo_inicial'] = 0
@@ -195,38 +301,91 @@ def detener_temporizador():
 
 @app.route('/api/limpiar', methods=['POST'])
 def limpiar_registros():
+    # Verificar token de administrador
+    data = request.json
+    token = data.get('admin_token', '')
+    if not verificar_token_admin(token, request.remote_addr):
+        return jsonify({"ok": False, "error": "Token de administrador inválido"}), 401
+    
     estado = cargar_estado()
     estado['registros'] = []
     guardar_estado(estado)
     return jsonify({"ok": True, "total": 0})
 
-@app.route('/api/descargar', methods=['GET'])
-def descargar_csv():
+@app.route('/api/descargar-excel', methods=['GET'])
+def descargar_excel():
     estado = cargar_estado()
     if not estado['registros']:
         return 'No hay registros', 404
     
-    # Generar CSV
-    lineas = ['Apellido Paterno,Apellido Materno,Nombres,DNI,Cargo,Puesto,Área,Fecha y Hora']
-    for r in estado['registros']:
-        linea = [
-            r.get('apellido_paterno', ''),
-            r.get('apellido_materno', ''),
-            r.get('nombres', ''),
-            r.get('dni', ''),
-            r.get('cargo_puesto', ''),
-            r.get('area_seccion', ''),
-            r.get('fecha_hora_servidor', '')
-        ]
-        # Escapar comas y comillas
-        linea = ['"' + str(x).replace('"', '""') + '"' if ',' in str(x) or '"' in str(x) else str(x) for x in linea]
-        lineas.append(','.join(linea))
+    # Crear libro de Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Asistencias"
     
-    csv = '\n'.join(lineas)
-    return csv, 200, {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename="asistencias.csv"'
-    }
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1E56A0", end_color="1E56A0", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Encabezados
+    headers = ['APELLIDO PATERNO', 'APELLIDO MATERNO', 'NOMBRES', 'DNI', 'ACTIVIDAD', 'GRUPO OCUPACIONAL', 'ÁREA DE TRABAJO EN LA INSTITUCIÓN O IPRESS', 'CENTRO DE TRABAJO', 'FECHA Y HORA DE ASISTENCIA']
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = border
+    
+    # Datos
+    for row, registro in enumerate(estado['registros'], 2):
+        datos = [
+            registro.get('apellido_paterno', ''),
+            registro.get('apellido_materno', ''),
+            registro.get('nombres', ''),
+            registro.get('dni', ''),
+            registro.get('cargo_actividad', ''),
+            registro.get('grupo_ocupacional', ''),
+            registro.get('area_trabajo', ''),
+            registro.get('centro_trabajo', ''),
+            registro.get('fecha_hora_servidor', '')
+        ]
+        
+        for col, valor in enumerate(datos, 1):
+            cell = ws.cell(row=row, column=col, value=valor)
+            cell.border = border
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+    
+    # Ajustar ancho de columnas
+    column_widths = [15, 15, 20, 12, 25, 30, 20]
+    for col, width in enumerate(column_widths, 1):
+        ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
+    
+    # Agregar información adicional
+    info_row = len(estado['registros']) + 3
+    ws.cell(row=info_row, column=1, value="Total de registros:").font = Font(bold=True)
+    ws.cell(row=info_row, column=2, value=len(estado['registros']))
+    ws.cell(row=info_row + 1, column=1, value="Fecha de generación:").font = Font(bold=True)
+    ws.cell(row=info_row + 1, column=2, value=datetime.now().strftime('%d/%m/%Y %H:%M:%S'))
+    
+    # Guardar en memoria
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    # Crear respuesta
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename="asistencias_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+    
+    return response
 
 # Servir archivos estáticos (HTML, CSS, JS)
 @app.route('/')

@@ -90,6 +90,85 @@ input:focus {
     box-shadow: 0 0 0 2px rgba(30, 86, 160, 0.2);
 }
 
+/* Estilos para inputs deshabilitados/bloqueados */
+input:disabled {
+    background-color: #f8f8f8 !important;
+    color: #999 !important;
+    border-color: #ddd !important;
+    cursor: not-allowed !important;
+    opacity: 0.6 !important;
+    transition: all 0.3s ease;
+}
+
+/* Estilo para formulario bloqueado */
+#formulario_asistencia.bloqueado {
+    position: relative;
+    transition: all 0.5s ease;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%) !important;
+    border: 2px dashed #ccc !important;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+/* #formulario_asistencia.bloqueado::before {
+    content: '🔒 FORMULARIO CERRADO - El tiempo de registro ha finalizado';
+    position: absolute;
+    top: -45px;
+    left: 0;
+    right: 0;
+    background: #d32f2f;
+    color: white;
+    text-align: center;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(211, 47, 47, 0.4);
+    animation: pulso 2s infinite;
+} */
+
+@keyframes pulso {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+/* Estilo para form-group bloqueado */
+.form-group.bloqueado {
+    transition: all 0.3s ease;
+    filter: grayscale(70%);
+}
+
+.form-group.bloqueado label {
+    color: #999 !important;
+}
+
+/* Proteger zona de administrador de efectos de bloqueo */
+#zona_admin .form-group,
+#zona_admin .form-group input,
+#zona_admin .form-group label,
+#zona_controles .form-group,
+#zona_controles .form-group input,
+#zona_controles .form-group label {
+    filter: none !important;
+    opacity: 1 !important;
+    color: inherit !important;
+}
+
+#zona_admin input,
+#zona_controles input {
+    background-color: white !important;
+    border-color: #ddd !important;
+    cursor: text !important;
+}
+
+#zona_admin input:disabled,
+#zona_controles input:disabled {
+    background-color: white !important;
+    color: #333 !important;
+    opacity: 1 !important;
+}
+
 .fecha-hora {
     background-color: #f0f0f0;
     padding: 10px 12px;
@@ -125,9 +204,25 @@ input:focus {
     color: white !important;
     cursor: not-allowed !important;
     opacity: 0.8 !important;
+    position: relative;
 }
 .btn-deshabilitado:hover {
     background-color: #ff5722 !important;
+    transform: none !important;
+}
+
+/* Estilo especial para botón bloqueado por tiempo */
+.btn-deshabilitado.tiempo-agotado {
+    background: linear-gradient(135deg, #ff5722 0%, #d32f2f 100%) !important;
+    border: 2px solid #d32f2f !important;
+    font-size: 14px !important;
+    padding: 15px 20px !important;
+    animation: parpadeo 1.5s infinite;
+}
+
+@keyframes parpadeo {
+    0%, 50% { opacity: 0.8; }
+    100% { opacity: 1; }
 }
 
 .zona-admin, .zona-descarga {
@@ -366,4 +461,32 @@ footer {
     padding: 15px;
     margin-bottom: 15px;
     background-color: #f8f9fa;
+}
+
+/* Botones de descarga mejorados */
+.botones-descarga {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.btn-excel {
+    background-color: #10793f !important;
+    border: 2px solid #0d5d31;
+    min-width: 250px;
+}
+
+.btn-excel:hover {
+    background-color: #0d5d31 !important;
+    box-shadow: 0 4px 8px rgba(16, 121, 63, 0.3);
+}
+
+@media (max-width: 600px) {
+    .botones-descarga {
+        margin: 10px 0;
+    }
+    
+    .btn-excel {
+        min-width: 100%;
+    }
 }

@@ -1,7 +1,7 @@
 // --- CONFIGURACIÓN ---
 // Las credenciales ahora se validan en el servidor por seguridad
 const MAX_INTENTOS_FALLIDOS = 3;
-const BLOQUEO_MINUTOS = 2;
+const BLOQUEO_MINUTOS = 10;
 
 // --- Variables globales ---
 let registros_acumulados = [];
@@ -11,6 +11,117 @@ let admin_token = null; // Token de sesión del admin
 let intentos_fallidos = 0;
 let bloqueo_hasta = null;
 let temporizador_local = null;
+
+// --- Funciones para persistir el bloqueo ---
+function guardar_estado_bloqueo() {
+    const estado = {
+        intentos_fallidos: intentos_fallidos,
+        bloqueo_hasta: bloqueo_hasta ? bloqueo_hasta.getTime() : null
+    };
+    localStorage.setItem('admin_bloqueo', JSON.stringify(estado));
+}
+
+function cargar_estado_bloqueo() {
+    try {
+        const estado = localStorage.getItem('admin_bloqueo');
+        if (estado) {
+            const data = JSON.parse(estado);
+            intentos_fallidos = data.intentos_fallidos || 0;
+            bloqueo_hasta = data.bloqueo_hasta ? new Date(data.bloqueo_hasta) : null;
+            
+            // Si el bloqueo ya expiró, limpiar
+            if (bloqueo_hasta && new Date() >= bloqueo_hasta) {
+                intentos_fallidos = 0;
+                bloqueo_hasta = null;
+                localStorage.removeItem('admin_bloqueo');
+            }
+        }
+    } catch (e) {
+        console.warn('Error al cargar estado de bloqueo:', e);
+        intentos_fallidos = 0;
+        bloqueo_hasta = null;
+    }
+}
+
+function limpiar_estado_bloqueo() {
+    intentos_fallidos = 0;
+    bloqueo_hasta = null;
+    localStorage.removeItem('admin_bloqueo');
+}
+
+function verificar_y_aplicar_bloqueo() {
+    const panelLogin = document.getElementById('panel_login');
+    const logElement = document.getElementById('log_intentos');
+    const textoElement = document.getElementById('texto_intentos');
+    
+    if (bloqueo_hasta && new Date() < bloqueo_hasta) {
+        // Está bloqueado - deshabilitar completamente la zona de login
+        const inputs = panelLogin.querySelectorAll('input');
+        const botones = panelLogin.querySelectorAll('button');
+        
+        inputs.forEach(input => {
+            input.disabled = true;
+            input.style.backgroundColor = '#f5f5f5';
+            input.style.color = '#999';
+            input.style.cursor = 'not-allowed';
+        });
+        
+        botones.forEach(btn => {
+            btn.disabled = true;
+            btn.style.backgroundColor = '#ccc';
+            btn.style.cursor = 'not-allowed';
+        });
+        
+        // Mostrar mensaje de bloqueo permanente
+        if (logElement && textoElement) {
+            const tiempoRestante = Math.ceil((bloqueo_hasta - new Date()) / 60000);
+            textoElement.textContent = `🔒 BLOQUEADO por ${tiempoRestante} minutos. Cambia de navegador para intentar nuevamente.`;
+            logElement.classList.remove('oculta');
+            logElement.style.backgroundColor = '#ffcdd2';
+            logElement.style.border = '2px solid #f44336';
+            logElement.style.fontWeight = 'bold';
+        }
+        
+        // Verificar cada minuto si debe desbloquearse
+        setTimeout(() => {
+            if (new Date() >= bloqueo_hasta) {
+                location.reload(); // Recargar página para limpiar estado
+            } else {
+                verificar_y_aplicar_bloqueo(); // Volver a verificar
+            }
+        }, 60000);
+        
+        return true; // Está bloqueado
+    } else {
+        // No está bloqueado - habilitar zona de login
+        const inputs = panelLogin.querySelectorAll('input');
+        const botones = panelLogin.querySelectorAll('button');
+        
+        inputs.forEach(input => {
+            input.disabled = false;
+            input.style.backgroundColor = '';
+            input.style.color = '';
+            input.style.cursor = '';
+        });
+        
+        botones.forEach(btn => {
+            btn.disabled = false;
+            btn.style.backgroundColor = '';
+            btn.style.cursor = '';
+        });
+        
+        // Mostrar intentos fallidos si los hay
+        if (intentos_fallidos > 0 && logElement && textoElement) {
+            textoElement.textContent = `${intentos_fallidos}/${MAX_INTENTOS_FALLIDOS} intentos fallidos`;
+            logElement.classList.remove('oculta');
+            logElement.style.backgroundColor = '#fff3e0';
+            logElement.style.border = '1px solid #ff9800';
+            logElement.style.fontWeight = 'normal';
+        }
+        
+        return false; // No está bloqueado
+    }
+}
 
 // --- Funciones de utilidad ---
 function formatear_fecha_hora(fecha) {
@@ -23,51 +134,82 @@ function formatear_fecha_hora(fecha) {
     return `${dia}/${mes}/${anio} ${horas}:${minutos}:${segundos}`;
 }
 
-function escapar_csv(campo) {
-    if (typeof campo !== 'string') campo = String(campo);
-    if (/^\d{8}$/.test(campo) && campo.startsWith('0')) {
-        campo = "'" + campo;
-    }
-    if (campo.includes(',') || campo.includes('"') || campo.includes('\n')) {
-        campo = '"' + campo.replace(/"/g, '""') + '"';
-    }
-    return campo;
-}
-
-function generar_csv_completo() {
-    if (registros_acumulados.length === 0) throw new Error('No hay registros');
-    
-    const encabezados = ['Apellido Paterno','Apellido Materno','Nombres','DNI','Cargo / Puesto','Área / Sección / Servicio','Fecha y Hora'];
-    const filas = registros_acumulados.map(r => [
-        r.apellido_paterno, r.apellido_materno, r.nombres, r.dni, r.cargo_puesto, r.area_seccion, r.fecha_hora
-    ]);
-    
-    return [
-        encabezados.map(escapar_csv).join(','),
-        ...filas.map(f => f.map(escapar_csv).join(','))
-    ].join('\n');
-}
-
-function descargar_archivo(contenido, nombre) {
-    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;\uFEFF' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombre;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
-
 function mostrar_mensaje(texto, tipo) {
     const elem = document.getElementById('mensaje_respuesta');
     if (elem) {
         elem.innerHTML = `<div class="mensaje ${tipo}">${texto}</div>`;
         if (tipo === 'exito' || tipo === 'advertencia') {
             setTimeout(() => { elem.innerHTML = ''; }, 5000);
+        }
+    }
+}
+
+function controlar_estado_formulario(tiempo_activo) {
+    // Obtener solo los form-group del formulario principal (no del admin)
+    const formularioPrincipal = document.getElementById('formulario_asistencia');
+    const formGroups = formularioPrincipal ? formularioPrincipal.querySelectorAll('.form-group') : [];
+    
+    // IDs de inputs que nunca deben bloquearse (administrador)
+    const inputsProtegidos = ['admin_usuario', 'admin_clave', 'minutos_tiempo'];
+    
+    formGroups.forEach(group => {
+        const inputs = group.querySelectorAll('input');
+        inputs.forEach(input => {
+            // Solo deshabilitar inputs que no sean protegidos y no sean de solo lectura
+            if (!inputsProtegidos.includes(input.id) && 
+                input.type !== 'button' && 
+                input.type !== 'submit') {
+                input.disabled = !tiempo_activo;
+            }
+        });
+        
+        // Agregar/quitar clase bloqueado solo a grupos del formulario principal
+        if (tiempo_activo) {
+            group.classList.remove('bloqueado');
+        } else {
+            group.classList.add('bloqueado');
+        }
+    });
+    
+    // Cambiar clase del formulario principal solamente
+    if (formularioPrincipal) {
+        if (tiempo_activo) {
+            formularioPrincipal.classList.remove('bloqueado');
+        } else {
+            formularioPrincipal.classList.add('bloqueado');
+        }
+    }
+    
+    // Mensaje visual en la interfaz
+    const mensaje_estado = document.getElementById('mensaje_estado_formulario');
+    if (!mensaje_estado) {
+        // Crear elemento de mensaje si no existe
+        const mensaje = document.createElement('div');
+        mensaje.id = 'mensaje_estado_formulario';
+        mensaje.style.textAlign = 'center';
+        mensaje.style.margin = '10px 0';
+        mensaje.style.padding = '8px';
+        mensaje.style.borderRadius = '6px';
+        mensaje.style.fontWeight = 'bold';
+        
+        if (formularioPrincipal) {
+            // Insertar antes del formulario principal
+            formularioPrincipal.parentNode.insertBefore(mensaje, formularioPrincipal);
+        }
+    }
+    
+    const mensajeElemento = document.getElementById('mensaje_estado_formulario');
+    if (mensajeElemento) {
+        if (tiempo_activo) {
+            mensajeElemento.innerHTML = '✅ <strong>Formulario activo</strong> - Puedes registrar tu asistencia';
+            mensajeElemento.style.background = '#388e3c';
+            mensajeElemento.style.color = 'white';
+            mensajeElemento.style.display = 'block';
+        } else {
+            mensajeElemento.innerHTML = '🔒 <strong>Formulario cerrado</strong> - Solo el administrador puede aperturar el registro';
+            mensajeElemento.style.background = '#d32f2f';
+            mensajeElemento.style.color = 'white';
+            mensajeElemento.style.display = 'block';
         }
     }
 }
@@ -82,17 +224,22 @@ function actualizar_temporizador_ui(segundos) {
         tiempo_elem.textContent = `${String(mins).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
     }
 
+    // Determinar si el tiempo está activo
+    const tiempo_activo = segundos > 0;
+    
+    // Controlar estado del formulario
+    controlar_estado_formulario(tiempo_activo);
+
     // Actualizar botón de registro
     const btn = document.getElementById('btn_registrar');
     if (btn) {
-        btn.disabled = (segundos <= 0);
-        btn.textContent = segundos <= 0 ? '⏰ Tiempo Agotado' : 'Registrar Asistencia';
-        
-        // Cambiar color del botón según el estado
-        if (segundos <= 0) {
-            btn.classList.add('btn-deshabilitado');
+        btn.disabled = !tiempo_activo;
+        if (tiempo_activo) {
+            btn.textContent = 'Registrar Asistencia';
+            btn.classList.remove('btn-deshabilitado', 'tiempo-agotado');
         } else {
-            btn.classList.remove('btn-deshabilitado');
+            btn.textContent = '⏰ Tiempo Agotado - Formulario Cerrado';
+            btn.classList.add('btn-deshabilitado', 'tiempo-agotado');
         }
     }
 
@@ -128,7 +275,7 @@ function actualizar_temporizador_ui(segundos) {
     } else if (segundos === 60) { // 1 minuto
         mostrar_mensaje('⚠️ ¡Último minuto para registrar asistencias!', 'advertencia');
     } else if (segundos === 0) {
-        mostrar_mensaje('⏰ Tiempo agotado. El formulario se ha cerrado.', 'error');
+        mostrar_mensaje('⏰ Tiempo agotado. El formulario se ha cerrado y los campos están bloqueados.', 'error');
     }
 }
 
@@ -211,7 +358,7 @@ async function iniciar_temporizador_servidor(minutos) {
         const res = await fetch('/api/iniciar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ minutos })
+            body: JSON.stringify({ minutos, admin_token })
         });
         
         if (res.ok) {
@@ -219,6 +366,9 @@ async function iniciar_temporizador_servidor(minutos) {
             // Iniciar temporizador local inmediatamente
             iniciar_temporizador_local(respuesta.tiempo);
             mostrar_mensaje(`✅ Temporizador iniciado: ${minutos} minutos`, 'exito');
+        } else if (res.status === 401) {
+            mostrar_mensaje('❌ Sesión de administrador inválida. Inicia sesión nuevamente.', 'error');
+            cerrar_sesion_local();
         } else {
             mostrar_mensaje('❌ Error al iniciar temporizador.', 'error');
         }
@@ -232,7 +382,7 @@ async function extender_temporizador_servidor(minutos) {
         const res = await fetch('/api/extender', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ minutos })
+            body: JSON.stringify({ minutos, admin_token })
         });
         
         if (res.ok) {
@@ -240,6 +390,9 @@ async function extender_temporizador_servidor(minutos) {
             // Actualizar temporizador local con el nuevo tiempo
             iniciar_temporizador_local(respuesta.tiempo_restante);
             mostrar_mensaje(`✅ Se agregaron ${minutos} minutos al temporizador`, 'exito');
+        } else if (res.status === 401) {
+            mostrar_mensaje('❌ Sesión de administrador inválida. Inicia sesión nuevamente.', 'error');
+            cerrar_sesion_local();
         } else {
             const error = await res.json();
             mostrar_mensaje(`❌ ${error.error}`, 'error');
@@ -253,7 +406,8 @@ async function detener_temporizador_servidor() {
     try {
         const res = await fetch('/api/detener', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_token })
         });
         
         if (res.ok) {
@@ -267,6 +421,9 @@ async function detener_temporizador_servidor() {
             actualizar_temporizador_ui(0);
             
             mostrar_mensaje('⏹️ Temporizador detenido. Formulario cerrado.', 'exito');
+        } else if (res.status === 401) {
+            mostrar_mensaje('❌ Sesión de administrador inválida. Inicia sesión nuevamente.', 'error');
+            cerrar_sesion_local();
         } else {
             mostrar_mensaje('❌ Error al detener temporizador.', 'error');
         }
@@ -299,11 +456,80 @@ async function registrar_asistencia_servidor(datos) {
     }
 }
 
+async function verificar_sesion_servidor() {
+    if (!admin_token) return false;
+    
+    try {
+        const res = await fetch('/api/verificar-sesion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: admin_token })
+        });
+        
+        if (res.ok) {
+            const respuesta = await res.json();
+            return respuesta.sesion_valida;
+        } else {
+            return false;
+        }
+    } catch (e) {
+        console.warn('Error al verificar sesión:', e);
+        return false;
+    }
+}
+
+async function cerrar_sesion_servidor() {
+    if (!admin_token) return;
+    
+    try {
+        await fetch('/api/cerrar-sesion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: admin_token })
+        });
+    } catch (e) {
+        console.warn('Error al cerrar sesión en servidor:', e);
+    }
+}
+
+function cerrar_sesion_local() {
+    admin_logueado = false;
+    admin_token = null;
+    document.getElementById('zona_controles')?.classList.add('oculta');
+    document.getElementById('panel_login')?.classList.remove('oculta');
+    
+    // Limpiar campos de login
+    document.getElementById('admin_usuario').value = '';
+    document.getElementById('admin_clave').value = '';
+    
+    mostrar_mensaje('🔒 Sesión cerrada automáticamente.', 'advertencia');
+}
+
 // --- INICIALIZACIÓN (SÓLO UN DOMContentLoaded) ---
 document.addEventListener('DOMContentLoaded', async () => {
+    // ✅ 0. Cargar estado de bloqueo persistente
+    cargar_estado_bloqueo();
+    
+    // ✅ 0.1. Verificar y aplicar bloqueo si corresponde
+    const estaBloqueado = verificar_y_aplicar_bloqueo();
+    
+    // ✅ 0.2. Inicializar estado del formulario (bloqueado por defecto)
+    controlar_estado_formulario(false);
+    
     // ✅ 1. Sincronización con servidor (menos frecuente para evitar conflictos)
     await cargar_estado_servidor();
     setInterval(cargar_estado_servidor, 10000); // Cada 10 segundos en lugar de 2
+    
+    // ✅ 1.1. Verificación periódica de sesión de administrador
+    setInterval(async () => {
+        if (admin_logueado && admin_token) {
+            const sesionValida = await verificar_sesion_servidor();
+            if (!sesionValida) {
+                mostrar_mensaje('⚠️ Tu sesión de administrador ha expirado o fue cerrada desde otro lugar.', 'advertencia');
+                cerrar_sesion_local();
+            }
+        }
+    }, 30000); // Cada 30 segundos
 
     // ✅ 2. Fecha/hora actual
     setInterval(() => {
@@ -313,7 +539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 1000);
 
     // ✅ 3. Mayúsculas en campos
-    ['apellido_paterno', 'apellido_materno', 'nombres', 'cargo_puesto', 'area_seccion'].forEach(id => {
+    ['apellido_paterno', 'apellido_materno', 'nombres', 'cargo_actividad', 'grupo_ocupacional', 'area_trabajo', 'centro_trabajo'].forEach(id => {
         const input = document.getElementById(id);
         if (input) {
             input.addEventListener('input', () => {
@@ -339,6 +565,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnLogin = document.getElementById('btn_login_admin');
     if (btnLogin) {
         const loginFunction = async () => {
+            // Verificar si está bloqueado por intentos fallidos
+            if (bloqueo_hasta && new Date() < bloqueo_hasta) {
+                const tiempoRestante = Math.ceil((bloqueo_hasta - new Date()) / 60000);
+                mostrar_mensaje(`🔒 Acceso bloqueado. Espera ${tiempoRestante} minutos o cambia de navegador.`, 'error');
+                return;
+            }
+            
             const usuario = document.getElementById('admin_usuario')?.value.trim();
             const clave = document.getElementById('admin_clave')?.value;
 
@@ -353,9 +586,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (resultado.exito) {
                 admin_logueado = true;
                 
+                // Resetear intentos fallidos al login exitoso
+                limpiar_estado_bloqueo();
+                
                 // Ocultar panel de login y mostrar controles de admin
                 document.getElementById('panel_login')?.classList.add('oculta');
                 document.getElementById('zona_controles')?.classList.remove('oculta');
+                
+                // Ocultar log de intentos si está visible
+                document.getElementById('log_intentos')?.classList.add('oculta');
                 
                 // Cargar estado actualizado y mostrar paneles apropiados
                 await cargar_estado_servidor();
@@ -366,7 +605,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 mostrar_mensaje('✅ Sesión de administrador iniciada.', 'exito');
             } else {
-                mostrar_mensaje(`❌ ${resultado.mensaje}`, 'error');
+                // Incrementar intentos fallidos
+                intentos_fallidos++;
+                
+                // Verificar si debe bloquearse
+                if (intentos_fallidos >= MAX_INTENTOS_FALLIDOS) {
+                    bloqueo_hasta = new Date(Date.now() + BLOQUEO_MINUTOS * 60000);
+                    guardar_estado_bloqueo(); // Persistir el bloqueo
+                    
+                    mostrar_mensaje(`❌ ${resultado.mensaje}. Demasiados intentos fallidos. Acceso bloqueado por ${BLOQUEO_MINUTOS} minutos.`, 'error');
+                    
+                    // Aplicar bloqueo visual inmediatamente
+                    verificar_y_aplicar_bloqueo();
+                } else {
+                    guardar_estado_bloqueo(); // Guardar intentos actuales
+                    
+                    const intentosRestantes = MAX_INTENTOS_FALLIDOS - intentos_fallidos;
+                    mostrar_mensaje(`❌ ${resultado.mensaje}. Te quedan ${intentosRestantes} intentos.`, 'error');
+                    
+                    // Mostrar log de intentos
+                    const logElement = document.getElementById('log_intentos');
+                    const textoElement = document.getElementById('texto_intentos');
+                    if (logElement && textoElement) {
+                        textoElement.textContent = `${intentos_fallidos}/${MAX_INTENTOS_FALLIDOS} intentos fallidos`;
+                        logElement.classList.remove('oculta');
+                        logElement.style.backgroundColor = '#fff3e0';
+                        logElement.style.border = '1px solid #ff9800';
+                    }
+                }
+                
                 // Limpiar campos en caso de error
                 document.getElementById('admin_clave').value = '';
             }
@@ -374,9 +641,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         btnLogin.addEventListener('click', loginFunction);
         
-        // Permitir login con Enter
+        // Permitir login con Enter (solo si no está bloqueado)
         document.getElementById('admin_clave')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') loginFunction();
+            if (e.key === 'Enter') {
+                // Verificar bloqueo antes de ejecutar
+                if (bloqueo_hasta && new Date() < bloqueo_hasta) {
+                    const tiempoRestante = Math.ceil((bloqueo_hasta - new Date()) / 60000);
+                    mostrar_mensaje(`🔒 Acceso bloqueado. Espera ${tiempoRestante} minutos o cambia de navegador.`, 'error');
+                    return;
+                }
+                loginFunction();
+            }
         });
     }
 
@@ -405,9 +680,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn_limpiar_registros')?.addEventListener('click', async () => {
         if (confirm('⚠️ ¿Borrar TODOS los registros?')) {
             try {
-                await fetch('/api/limpiar', { method: 'POST' });
-                await cargar_estado_servidor();
-                mostrar_mensaje('✅ Registros eliminados.', 'exito');
+                const res = await fetch('/api/limpiar', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_token })
+                });
+                
+                if (res.ok) {
+                    await cargar_estado_servidor();
+                    mostrar_mensaje('✅ Registros eliminados.', 'exito');
+                } else if (res.status === 401) {
+                    mostrar_mensaje('❌ Sesión de administrador inválida. Inicia sesión nuevamente.', 'error');
+                    cerrar_sesion_local();
+                } else {
+                    mostrar_mensaje('❌ Error al limpiar registros.', 'error');
+                }
             } catch (e) {
                 mostrar_mensaje('❌ Error al limpiar.', 'error');
             }
@@ -430,14 +717,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             apellido_materno: document.getElementById('apellido_materno').value.trim(),
             nombres: document.getElementById('nombres').value.trim(),
             dni: document.getElementById('dni').value.trim(),
-            cargo_puesto: document.getElementById('cargo_puesto').value.trim(),
-            area_seccion: document.getElementById('area_seccion').value.trim(),
+            cargo_actividad: document.getElementById('cargo_actividad').value.trim(),
+            grupo_ocupacional: document.getElementById('grupo_ocupacional').value.trim(),
+            area_trabajo: document.getElementById('area_trabajo').value.trim(),
+            centro_trabajo: document.getElementById('centro_trabajo').value.trim(),
             fecha_hora: formatear_fecha_hora(new Date())
         };
 
         // Validaciones
         if (!datos.apellido_paterno || !datos.apellido_materno || !datos.nombres || 
-            !datos.dni || !datos.cargo_puesto || !datos.area_seccion) {
+            !datos.dni || !datos.cargo_actividad || !datos.grupo_ocupacional || !datos.area_trabajo || !datos.centro_trabajo) {
             mostrar_mensaje('❌ Todos los campos son obligatorios.', 'error');
             return;
         }
@@ -466,38 +755,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Eventos de admin (descargar, cerrar sesión, etc.)
-    document.getElementById('btn_descargar_todo')?.addEventListener('click', async () => {
+
+    // Descarga Excel
+    document.getElementById('btn_descargar_excel')?.addEventListener('click', async () => {
         if (admin_logueado) {
             try {
                 // Obtener registros actualizados del servidor
                 await cargar_estado_servidor();
                 
                 if (registros_acumulados.length > 0) {
-                    const csv = generar_csv_completo();
-                    descargar_archivo(csv, `asistencias_${new Date().toISOString().slice(0,10)}.csv`);
-                    mostrar_mensaje('✅ CSV descargado correctamente.', 'exito');
+                    // Descargar directamente desde el servidor
+                    const link = document.createElement('a');
+                    link.href = '/api/descargar-excel';
+                    link.download = `asistencias_${new Date().toISOString().slice(0,10)}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    mostrar_mensaje('✅ Excel descargado correctamente.', 'exito');
                 } else {
                     mostrar_mensaje('⚠️ No hay registros para descargar.', 'advertencia');
                 }
             } catch (e) {
-                mostrar_mensaje('❌ Error al generar CSV.', 'error');
+                mostrar_mensaje('❌ Error al generar Excel.', 'error');
             }
         } else {
             mostrar_mensaje('❌ Debes estar logueado como administrador.', 'error');
         }
     });
 
-    document.getElementById('btn_cerrar_sesion')?.addEventListener('click', () => {
-        admin_logueado = false;
-        admin_token = null; // Limpiar token de seguridad
-        document.getElementById('zona_controles')?.classList.add('oculta');
-        document.getElementById('panel_login')?.classList.remove('oculta');
+    document.getElementById('btn_cerrar_sesion')?.addEventListener('click', async () => {
+        // Cerrar sesión en el servidor
+        await cerrar_sesion_servidor();
         
-        // Limpiar campos de login
-        document.getElementById('admin_usuario').value = '';
-        document.getElementById('admin_clave').value = '';
+        // Cerrar sesión localmente
+        cerrar_sesion_local();
         
-        mostrar_mensaje('🔒 Sesión cerrada.', 'exito');
+        mostrar_mensaje('🔒 Sesión cerrada correctamente.', 'exito');
     });
 });

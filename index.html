@@ -27,28 +27,18 @@
             <span id="contador_valor">0</span>
         </div>
 
-        <!-- Panel de control del administrador (siempre visible) -->
-        <!-- <div id="panel_admin" class="panel-admin oculta">
-            <h4>⏱️ Iniciar temporizador</h4>
-            <div class="form-group-inline">
-                <input type="number" id="minutos_inicio" min="5" max="120" value="30" placeholder="Minutos">
-                <button id="btn_iniciar_temporizador" class="btn-tiempo">▶️ Iniciar</button>
-            </div>
-            <button id="btn_cerrar_sesion_simple" class="btn-cerrar">Cerrar sesión</button>
-        </div> -->
-
         <!-- Formulario -->
         <form id="formulario_asistencia">
             <div class="form-group">
-                <label for="apellido_paterno">Apellido Paterno *</label>
+                <label for="apellido_paterno">APELLIDO PATERNO *</label>
                 <input type="text" id="apellido_paterno" required>
             </div>
             <div class="form-group">
-                <label for="apellido_materno">Apellido Materno *</label>
+                <label for="apellido_materno">APELLIDO MATERNO *</label>
                 <input type="text" id="apellido_materno" required>
             </div>
             <div class="form-group">
-                <label for="nombres">Nombres *</label>
+                <label for="nombres">NOMBRES *</label>
                 <input type="text" id="nombres" required>
             </div>
             <div class="form-group">
@@ -57,15 +47,23 @@
                 <input type="text" id="dni" inputmode="numeric" pattern="[0-9]*" maxlength="8" required placeholder="Ej: 78945612">
             </div>
             <div class="form-group">
-                <label for="cargo_puesto">Cargo / Puesto *</label>
-                <input type="text" id="cargo_puesto" required>
+                <label for="cargo_actividad">ACTIVIDAD *</label>
+                <input type="text" id="cargo_actividad" required>
             </div>
             <div class="form-group">
-                <label for="area_seccion">Área / Sección / Servicio *</label>
-                <input type="text" id="area_seccion" required>
+                <label for="grupo_ocupacional">GRUPO OCUPACIONAL *</label>
+                <input type="text" id="grupo_ocupacional" required>
             </div>
             <div class="form-group">
-                <label>Fecha y Hora (automático)</label>
+                <label for="area_trabajo">ÁREA DE TRABAJO EN LA INSTITUCIÓN O IPRESS *</label>
+                <input type="text" id="area_trabajo" required>
+            </div>
+            <div class="form-group">
+                <label for="centro_trabajo">CENTRO DE TRABAJO *</label>
+                <input type="text" id="centro_trabajo" required>
+            </div>
+            <div class="form-group">
+                <label>FECHA Y HORA DE ASISTENCIA (automático)</label>
                 <div id="fecha_hora_mostrada" class="fecha-hora">--/--/---- --:--:--</div>
             </div>
 
@@ -76,7 +74,7 @@
 
         <!-- Zona de administrador (siempre visible) -->
         <div id="zona_admin" class="zona-admin">
-            <h4>🔐 Acceso de Administrador</h4>
+            <h4>🔐 Acceso solo del Administrador</h4>
             
             <!-- Panel de login (se oculta cuando está logueado) -->
             <div id="panel_login" class="panel-login">
@@ -117,9 +115,11 @@
                     <p class="ayuda">Esto detendrá el tiempo y cerrará el formulario inmediatamente.</p>
                 </div>
 
-                <button id="btn_descargar_todo" class="btn-descargar">
-                    📥 Descargar CSV con todas las asistencias
-                </button>
+                <div class="botones-descarga">
+                    <button id="btn_descargar_excel" class="btn-descargar btn-excel">
+                        📥 Descargar Excel (.xlsx)
+                    </button>
+                </div>
 
                 <!-- ✅ Botón limpiar -->
                 <button id="btn_limpiar_registros" class="btn-limpiar">
@@ -133,8 +133,8 @@
         <div id="mensaje_respuesta"></div>
 
         <footer>
-            <p>Formulario local — Creado por Jenrry Soto Dextre
-            Página web: <a target="_blank" href="https://dextre.xyz">https://dextre.xyz</a></p>
+            <p>Formulario local — Creado por Jenrry Soto Dextre</p>
+            Página web: <a target="_blank" href="https://dextre.xyz">https://dextre.xyz</a>
         </footer>
     </div>
 
