@@ -30,8 +30,8 @@ Sistema web para registro de asistencias en sesiones de inducción de Seguridad 
 
 1. **Clona el repositorio**:
 ```bash
-git clone https://github.com/tu-usuario/formulario-asistencia.git
-cd formulario-asistencia
+git clone https://github.com/jenrrysd/formulario_asistencia_mtpe.git
+cd formulario_asistencia_mtpe/
 ```
 
 2. **Instala las dependencias**:
