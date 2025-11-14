@@ -28,7 +28,7 @@ function cargar_estado_bloqueo() {
             const data = JSON.parse(estado);
             intentos_fallidos = data.intentos_fallidos || 0;
             bloqueo_hasta = data.bloqueo_hasta ? new Date(data.bloqueo_hasta) : null;
-            
+
             // Si el bloqueo ya expiró, limpiar
             if (bloqueo_hasta && new Date() >= bloqueo_hasta) {
                 intentos_fallidos = 0;
@@ -53,25 +53,25 @@ function verificar_y_aplicar_bloqueo() {
     const panelLogin = document.getElementById('panel_login');
     const logElement = document.getElementById('log_intentos');
     const textoElement = document.getElementById('texto_intentos');
-    
+
     if (bloqueo_hasta && new Date() < bloqueo_hasta) {
         // Está bloqueado - deshabilitar completamente la zona de login
         const inputs = panelLogin.querySelectorAll('input');
         const botones = panelLogin.querySelectorAll('button');
-        
+
         inputs.forEach(input => {
             input.disabled = true;
             input.style.backgroundColor = '#f5f5f5';
             input.style.color = '#999';
             input.style.cursor = 'not-allowed';
         });
-        
+
         botones.forEach(btn => {
             btn.disabled = true;
             btn.style.backgroundColor = '#ccc';
             btn.style.cursor = 'not-allowed';
         });
-        
+
         // Mostrar mensaje de bloqueo permanente
         if (logElement && textoElement) {
             const tiempoRestante = Math.ceil((bloqueo_hasta - new Date()) / 60000);
@@ -81,7 +81,7 @@ function verificar_y_aplicar_bloqueo() {
             logElement.style.border = '2px solid #f44336';
             logElement.style.fontWeight = 'bold';
         }
-        
+
         // Verificar cada minuto si debe desbloquearse
         setTimeout(() => {
             if (new Date() >= bloqueo_hasta) {
@@ -90,26 +90,26 @@ function verificar_y_aplicar_bloqueo() {
                 verificar_y_aplicar_bloqueo(); // Volver a verificar
             }
         }, 60000);
-        
+
         return true; // Está bloqueado
     } else {
         // No está bloqueado - habilitar zona de login
         const inputs = panelLogin.querySelectorAll('input');
         const botones = panelLogin.querySelectorAll('button');
-        
+
         inputs.forEach(input => {
             input.disabled = false;
             input.style.backgroundColor = '';
             input.style.color = '';
             input.style.cursor = '';
         });
-        
+
         botones.forEach(btn => {
             btn.disabled = false;
             btn.style.backgroundColor = '';
             btn.style.cursor = '';
         });
-        
+
         // Mostrar intentos fallidos si los hay
         if (intentos_fallidos > 0 && logElement && textoElement) {
             textoElement.textContent = `${intentos_fallidos}/${MAX_INTENTOS_FALLIDOS} intentos fallidos`;
@@ -118,7 +118,7 @@ function verificar_y_aplicar_bloqueo() {
             logElement.style.border = '1px solid #ff9800';
             logElement.style.fontWeight = 'normal';
         }
-        
+
         return false; // No está bloqueado
     }
 }
@@ -148,21 +148,21 @@ function controlar_estado_formulario(tiempo_activo) {
     // Obtener solo los form-group del formulario principal (no del admin)
     const formularioPrincipal = document.getElementById('formulario_asistencia');
     const formGroups = formularioPrincipal ? formularioPrincipal.querySelectorAll('.form-group') : [];
-    
+
     // IDs de inputs que nunca deben bloquearse (administrador)
     const inputsProtegidos = ['admin_usuario', 'admin_clave', 'minutos_tiempo'];
-    
+
     formGroups.forEach(group => {
-        const inputs = group.querySelectorAll('input');
+        const inputs = group.querySelectorAll('input, select');
         inputs.forEach(input => {
             // Solo deshabilitar inputs que no sean protegidos y no sean de solo lectura
-            if (!inputsProtegidos.includes(input.id) && 
-                input.type !== 'button' && 
+            if (!inputsProtegidos.includes(input.id) &&
+                input.type !== 'button' &&
                 input.type !== 'submit') {
                 input.disabled = !tiempo_activo;
             }
         });
-        
+
         // Agregar/quitar clase bloqueado solo a grupos del formulario principal
         if (tiempo_activo) {
             group.classList.remove('bloqueado');
@@ -170,7 +170,7 @@ function controlar_estado_formulario(tiempo_activo) {
             group.classList.add('bloqueado');
         }
     });
-    
+
     // Cambiar clase del formulario principal solamente
     if (formularioPrincipal) {
         if (tiempo_activo) {
@@ -179,7 +179,7 @@ function controlar_estado_formulario(tiempo_activo) {
             formularioPrincipal.classList.add('bloqueado');
         }
     }
-    
+
     // Mensaje visual en la interfaz
     const mensaje_estado = document.getElementById('mensaje_estado_formulario');
     if (!mensaje_estado) {
@@ -191,13 +191,13 @@ function controlar_estado_formulario(tiempo_activo) {
         mensaje.style.padding = '8px';
         mensaje.style.borderRadius = '6px';
         mensaje.style.fontWeight = 'bold';
-        
+
         if (formularioPrincipal) {
             // Insertar antes del formulario principal
             formularioPrincipal.parentNode.insertBefore(mensaje, formularioPrincipal);
         }
     }
-    
+
     const mensajeElemento = document.getElementById('mensaje_estado_formulario');
     if (mensajeElemento) {
         if (tiempo_activo) {
@@ -218,7 +218,7 @@ function actualizar_temporizador_ui(segundos) {
     tiempo_restante_segundos = segundos;
     const mins = Math.floor(segundos / 60);
     const segs = segundos % 60;
-    
+
     const tiempo_elem = document.getElementById('tiempo_restante');
     if (tiempo_elem) {
         tiempo_elem.textContent = `${String(mins).padStart(2, '0')}:${String(segs).padStart(2, '0')}`;
@@ -226,7 +226,7 @@ function actualizar_temporizador_ui(segundos) {
 
     // Determinar si el tiempo está activo
     const tiempo_activo = segundos > 0;
-    
+
     // Controlar estado del formulario
     controlar_estado_formulario(tiempo_activo);
 
@@ -249,7 +249,7 @@ function actualizar_temporizador_ui(segundos) {
         const btn_accion_tiempo = document.getElementById('btn_accion_tiempo');
         const ayuda_tiempo = document.getElementById('ayuda_tiempo');
         const panel_detener = document.getElementById('panel_detener_temporizador');
-        
+
         if (titulo_tiempo && btn_accion_tiempo && ayuda_tiempo && panel_detener) {
             if (segundos > 0) {
                 // Temporizador activo: cambiar a modo "extender"
@@ -309,7 +309,7 @@ async function login_admin_servidor(usuario, clave) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuario, clave })
         });
-        
+
         if (res.ok) {
             const respuesta = await res.json();
             admin_token = respuesta.admin_token;
@@ -328,17 +328,17 @@ async function cargar_estado_servidor() {
         const res = await fetch('/api/estado');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const estado = await res.json();
-        
+
         // Actualizar registros acumulados
         registros_acumulados = estado.registros || [];
-        
+
         // Actualizar contador
         const contador = document.getElementById('contador_valor');
         if (contador) contador.textContent = registros_acumulados.length;
 
         // Actualizar temporizador
         const tiempo = estado.tiempo_restante || 0;
-        
+
         // Solo iniciar temporizador local si ha cambiado significativamente
         if (Math.abs(tiempo_restante_segundos - tiempo) > 2 || tiempo_restante_segundos === 0) {
             if (tiempo > 0) {
@@ -360,7 +360,7 @@ async function iniciar_temporizador_servidor(minutos) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ minutos, admin_token })
         });
-        
+
         if (res.ok) {
             const respuesta = await res.json();
             // Iniciar temporizador local inmediatamente
@@ -384,7 +384,7 @@ async function extender_temporizador_servidor(minutos) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ minutos, admin_token })
         });
-        
+
         if (res.ok) {
             const respuesta = await res.json();
             // Actualizar temporizador local con el nuevo tiempo
@@ -409,17 +409,17 @@ async function detener_temporizador_servidor() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ admin_token })
         });
-        
+
         if (res.ok) {
             // Detener temporizador local
             if (temporizador_local) {
                 clearInterval(temporizador_local);
                 temporizador_local = null;
             }
-            
+
             // Actualizar UI inmediatamente
             actualizar_temporizador_ui(0);
-            
+
             mostrar_mensaje('⏹️ Temporizador detenido. Formulario cerrado.', 'exito');
         } else if (res.status === 401) {
             mostrar_mensaje('❌ Sesión de administrador inválida. Inicia sesión nuevamente.', 'error');
@@ -439,7 +439,7 @@ async function registrar_asistencia_servidor(datos) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(datos)
         });
-        
+
         if (res.ok) {
             return true;
         } else if (res.status === 400) {
@@ -458,14 +458,14 @@ async function registrar_asistencia_servidor(datos) {
 
 async function verificar_sesion_servidor() {
     if (!admin_token) return false;
-    
+
     try {
         const res = await fetch('/api/verificar-sesion', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: admin_token })
         });
-        
+
         if (res.ok) {
             const respuesta = await res.json();
             return respuesta.sesion_valida;
@@ -480,7 +480,7 @@ async function verificar_sesion_servidor() {
 
 async function cerrar_sesion_servidor() {
     if (!admin_token) return;
-    
+
     try {
         await fetch('/api/cerrar-sesion', {
             method: 'POST',
@@ -497,11 +497,11 @@ function cerrar_sesion_local() {
     admin_token = null;
     document.getElementById('zona_controles')?.classList.add('oculta');
     document.getElementById('panel_login')?.classList.remove('oculta');
-    
+
     // Limpiar campos de login
     document.getElementById('admin_usuario').value = '';
     document.getElementById('admin_clave').value = '';
-    
+
     mostrar_mensaje('🔒 Sesión cerrada automáticamente.', 'advertencia');
 }
 
@@ -509,17 +509,17 @@ function cerrar_sesion_local() {
 document.addEventListener('DOMContentLoaded', async () => {
     // ✅ 0. Cargar estado de bloqueo persistente
     cargar_estado_bloqueo();
-    
+
     // ✅ 0.1. Verificar y aplicar bloqueo si corresponde
     const estaBloqueado = verificar_y_aplicar_bloqueo();
-    
+
     // ✅ 0.2. Inicializar estado del formulario (bloqueado por defecto)
     controlar_estado_formulario(false);
-    
+
     // ✅ 1. Sincronización con servidor (menos frecuente para evitar conflictos)
     await cargar_estado_servidor();
     setInterval(cargar_estado_servidor, 10000); // Cada 10 segundos en lugar de 2
-    
+
     // ✅ 1.1. Verificación periódica de sesión de administrador
     setInterval(async () => {
         if (admin_logueado && admin_token) {
@@ -538,8 +538,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (elem) elem.textContent = formatear_fecha_hora(ahora);
     }, 1000);
 
-    // ✅ 3. Mayúsculas en campos
-    ['apellido_paterno', 'apellido_materno', 'nombres', 'cargo_actividad', 'grupo_ocupacional', 'area_trabajo', 'centro_trabajo'].forEach(id => {
+    // ✅ 3. Mayúsculas en campos (excluir select)
+    ['apellido_paterno', 'apellido_materno', 'nombres', 'dni', 'cargo_numero_telefonico', 'grupo_correo_electronico', 'centro_trabajo'].forEach(id => {
         const input = document.getElementById(id);
         if (input) {
             input.addEventListener('input', () => {
@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mostrar_mensaje(`🔒 Acceso bloqueado. Espera ${tiempoRestante} minutos o cambia de navegador.`, 'error');
                 return;
             }
-            
+
             const usuario = document.getElementById('admin_usuario')?.value.trim();
             const clave = document.getElementById('admin_clave')?.value;
 
@@ -582,47 +582,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Validar en el servidor
             const resultado = await login_admin_servidor(usuario, clave);
-            
+
             if (resultado.exito) {
                 admin_logueado = true;
-                
+
                 // Resetear intentos fallidos al login exitoso
                 limpiar_estado_bloqueo();
-                
+
                 // Ocultar panel de login y mostrar controles de admin
                 document.getElementById('panel_login')?.classList.add('oculta');
                 document.getElementById('zona_controles')?.classList.remove('oculta');
-                
+
                 // Ocultar log de intentos si está visible
                 document.getElementById('log_intentos')?.classList.add('oculta');
-                
+
                 // Cargar estado actualizado y mostrar paneles apropiados
                 await cargar_estado_servidor();
-                
+
                 // Limpiar campos de login
                 document.getElementById('admin_usuario').value = '';
                 document.getElementById('admin_clave').value = '';
-                
+
                 mostrar_mensaje('✅ Sesión de administrador iniciada.', 'exito');
             } else {
                 // Incrementar intentos fallidos
                 intentos_fallidos++;
-                
+
                 // Verificar si debe bloquearse
                 if (intentos_fallidos >= MAX_INTENTOS_FALLIDOS) {
                     bloqueo_hasta = new Date(Date.now() + BLOQUEO_MINUTOS * 60000);
                     guardar_estado_bloqueo(); // Persistir el bloqueo
-                    
+
                     mostrar_mensaje(`❌ ${resultado.mensaje}. Demasiados intentos fallidos. Acceso bloqueado por ${BLOQUEO_MINUTOS} minutos.`, 'error');
-                    
+
                     // Aplicar bloqueo visual inmediatamente
                     verificar_y_aplicar_bloqueo();
                 } else {
                     guardar_estado_bloqueo(); // Guardar intentos actuales
-                    
+
                     const intentosRestantes = MAX_INTENTOS_FALLIDOS - intentos_fallidos;
                     mostrar_mensaje(`❌ ${resultado.mensaje}. Te quedan ${intentosRestantes} intentos.`, 'error');
-                    
+
                     // Mostrar log de intentos
                     const logElement = document.getElementById('log_intentos');
                     const textoElement = document.getElementById('texto_intentos');
@@ -633,14 +633,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         logElement.style.border = '1px solid #ff9800';
                     }
                 }
-                
+
                 // Limpiar campos en caso de error
                 document.getElementById('admin_clave').value = '';
             }
         };
 
         btnLogin.addEventListener('click', loginFunction);
-        
+
         // Permitir login con Enter (solo si no está bloqueado)
         document.getElementById('admin_clave')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -680,12 +680,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn_limpiar_registros')?.addEventListener('click', async () => {
         if (confirm('⚠️ ¿Borrar TODOS los registros?')) {
             try {
-                const res = await fetch('/api/limpiar', { 
+                const res = await fetch('/api/limpiar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ admin_token })
                 });
-                
+
                 if (res.ok) {
                     await cargar_estado_servidor();
                     mostrar_mensaje('✅ Registros eliminados.', 'exito');
@@ -704,29 +704,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Evento de formulario
     document.getElementById('formulario_asistencia')?.addEventListener('submit', async e => {
         e.preventDefault();
-        
+
         // Verificar si el tiempo se agotó
         if (tiempo_restante_segundos <= 0) {
             mostrar_mensaje('⏰ El tiempo para registrar asistencias ha expirado.', 'error');
             return;
         }
-        
+
         // Recopilar datos del formulario
+        const selectAreaOrganizacional = document.getElementById('area_organizacional');
+        const areaOrganizacionalTexto = selectAreaOrganizacional.selectedIndex > 0 ?
+            selectAreaOrganizacional.options[selectAreaOrganizacional.selectedIndex].text : '';
+
         const datos = {
             apellido_paterno: document.getElementById('apellido_paterno').value.trim(),
             apellido_materno: document.getElementById('apellido_materno').value.trim(),
             nombres: document.getElementById('nombres').value.trim(),
             dni: document.getElementById('dni').value.trim(),
-            cargo_actividad: document.getElementById('cargo_actividad').value.trim(),
-            grupo_ocupacional: document.getElementById('grupo_ocupacional').value.trim(),
-            area_trabajo: document.getElementById('area_trabajo').value.trim(),
+            cargo_numero_telefonico: document.getElementById('cargo_numero_telefonico').value.trim(),
+            grupo_correo_electronico: document.getElementById('grupo_correo_electronico').value.trim(),
+            area_organizacional: areaOrganizacionalTexto,
             centro_trabajo: document.getElementById('centro_trabajo').value.trim(),
             fecha_hora: formatear_fecha_hora(new Date())
         };
 
         // Validaciones
-        if (!datos.apellido_paterno || !datos.apellido_materno || !datos.nombres || 
-            !datos.dni || !datos.cargo_actividad || !datos.grupo_ocupacional || !datos.area_trabajo || !datos.centro_trabajo) {
+        if (!datos.apellido_paterno || !datos.apellido_materno || !datos.nombres ||
+            !datos.dni || !datos.cargo_numero_telefonico || !datos.grupo_correo_electronico || !datos.area_organizacional || !datos.centro_trabajo) {
             mostrar_mensaje('❌ Todos los campos son obligatorios.', 'error');
             return;
         }
@@ -746,10 +750,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const exito = await registrar_asistencia_servidor(datos);
         if (exito) {
             mostrar_mensaje('✅ Asistencia registrada correctamente.', 'exito');
-            
+
             // Limpiar formulario
             document.getElementById('formulario_asistencia').reset();
-            
+
             // Actualizar estado
             await cargar_estado_servidor();
         }
@@ -762,16 +766,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 // Obtener registros actualizados del servidor
                 await cargar_estado_servidor();
-                
+
                 if (registros_acumulados.length > 0) {
                     // Descargar directamente desde el servidor
                     const link = document.createElement('a');
                     link.href = '/api/descargar-excel';
-                    link.download = `asistencias_${new Date().toISOString().slice(0,10)}.xlsx`;
+                    link.download = `asistencias_${new Date().toISOString().slice(0, 10)}.xlsx`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    
+
                     mostrar_mensaje('✅ Excel descargado correctamente.', 'exito');
                 } else {
                     mostrar_mensaje('⚠️ No hay registros para descargar.', 'advertencia');
@@ -787,10 +791,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn_cerrar_sesion')?.addEventListener('click', async () => {
         // Cerrar sesión en el servidor
         await cerrar_sesion_servidor();
-        
+
         // Cerrar sesión localmente
         cerrar_sesion_local();
-        
+
         mostrar_mensaje('🔒 Sesión cerrada correctamente.', 'exito');
     });
 });

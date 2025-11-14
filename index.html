@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulario de Asistencia - HNERM USST</title>
+    <title>Formulario de Asistencia - MTPE</title>
     <link rel="stylesheet" href="estilo.css">
 </head>
+
 <body>
     <div class="container">
         <div class="header">
-            <h1>HNERM</h1>
-            <h2>USST (Unidad de Seguridad y Salud en el Trabajo)</h2>
+            <h1>MTPE</h1>
+            <h2>REGISTRO DE ASISTENCIA</h2>
             <h3>TEMA: INDUCCIÓN EN SEGURIDAD Y SALUD EN EL TRABAJO</h3>
         </div>
 
@@ -44,19 +46,30 @@
             <div class="form-group">
                 <label for="dni">DNI *</label>
                 <!-- <input type="number" id="dni" required minlength="8" maxlength="8"> -->
-                <input type="text" id="dni" inputmode="numeric" pattern="[0-9]*" maxlength="8" required placeholder="Ej: 78945612">
+                <input type="text" id="dni" inputmode="numeric" pattern="[0-9]*" maxlength="8" required
+                    placeholder="Ej: 78945612">
             </div>
             <div class="form-group">
-                <label for="cargo_actividad">ACTIVIDAD *</label>
-                <input type="text" id="cargo_actividad" required>
+                <label for="cargo_numero_telefonico">NÚMERO TELEFONICO *</label>
+                <input type="text" id="cargo_numero_telefonico" inputmode="numeric" pattern="[0-9]*" maxlength="9"
+                    required placeholder="Ejem: 904076044">
             </div>
             <div class="form-group">
-                <label for="grupo_ocupacional">GRUPO OCUPACIONAL *</label>
-                <input type="text" id="grupo_ocupacional" required>
+                <label for="grupo_correo_electronico">CORREO ELECTRÓNICO *</label>
+                <input type="email" id="grupo_correo_electronico" required>
             </div>
             <div class="form-group">
-                <label for="area_trabajo">ÁREA DE TRABAJO EN LA INSTITUCIÓN O IPRESS *</label>
-                <input type="text" id="area_trabajo" required>
+                <label for="area_organizacional">UNIDAD DE ORGANIZACIÓN A LA QUE PERTENECE *</label>
+                <select id="area_organizacional" name="area_organizacional" required>
+                    <option value="">Seleccione una opción...</option>
+                    <option value="area1">Dirección General de Políticas para la Promoción de la Formalización
+                        Laboral del Trabajo - DGPPFLIT</option>
+                    <option value="area2">Dirección General del Trabajo - DGT</option>
+                    <option value="area3">Oficina General de Recursos Humanos - OGRH</option>
+                    <option value="area4">Oficina de Atención al Ciudadano y Gestión Documentaria - OACGD</option>
+                    <option value="area5">Dirección Regional de Trabajo y Promoción de Trabajo de Lima Metropolitana
+                        - DRTPTLM</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="centro_trabajo">CENTRO DE TRABAJO *</label>
@@ -75,7 +88,7 @@
         <!-- Zona de administrador (siempre visible) -->
         <div id="zona_admin" class="zona-admin">
             <h4>🔐 Acceso solo del Administrador</h4>
-            
+
             <!-- Panel de login (se oculta cuando está logueado) -->
             <div id="panel_login" class="panel-login">
                 <div class="form-group">
@@ -105,13 +118,15 @@
                         <input type="number" id="minutos_tiempo" min="1" max="120" value="30" placeholder="Minutos">
                         <button id="btn_accion_tiempo" class="btn-tiempo">▶️ Iniciar temporizador</button>
                     </div>
-                    <p id="ayuda_tiempo" class="ayuda">El temporizador debe iniciarse antes de registrar asistencias.</p>
+                    <p id="ayuda_tiempo" class="ayuda">El temporizador debe iniciarse antes de registrar asistencias.
+                    </p>
                 </div>
 
                 <!-- ✅ Panel para DETENER el temporizador (solo cuando está activo) -->
                 <div id="panel_detener_temporizador" class="control-tiempo oculta">
                     <h4>⏹️ Control de sesión activa</h4>
-                    <button id="btn_detener_temporizador" class="btn-detener">⏹️ Detener temporizador y cerrar formulario</button>
+                    <button id="btn_detener_temporizador" class="btn-detener">⏹️ Detener temporizador y cerrar
+                        formulario</button>
                     <p class="ayuda">Esto detendrá el tiempo y cerrará el formulario inmediatamente.</p>
                 </div>
 
@@ -140,4 +155,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

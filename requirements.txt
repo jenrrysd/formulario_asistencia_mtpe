@@ -1,5 +1,6 @@
 # Dependencias del Formulario de Asistencia HNERM-USST
 # Solo exporta a Excel (.xlsx) - CSV comentado/removido
+# pip3 install -r requirements.txt
 
 Flask==2.3.3
 Werkzeug==2.3.7
