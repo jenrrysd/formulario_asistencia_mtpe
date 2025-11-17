@@ -8,32 +8,14 @@ import hashlib
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from dotenv import load_dotenv
 
-# Cargar configuración desde archivo .env si existe
-
-
-def cargar_configuracion():
-    admin_usuario = 'admin'  # Valor por defecto
-    admin_clave = 'usst2025'  # Valor por defecto
-
-    if os.path.exists('.env'):
-        try:
-            with open('.env', 'r') as f:
-                for linea in f:
-                    if '=' in linea and not linea.strip().startswith('#'):
-                        clave, valor = linea.strip().split('=', 1)
-                        if clave == 'ADMIN_USUARIO':
-                            admin_usuario = valor
-                        elif clave == 'ADMIN_CLAVE':
-                            admin_clave = valor
-        except:
-            pass  # Si hay error, usar valores por defecto
-
-    return admin_usuario, admin_clave
-
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 # Configuración de seguridad
-ADMIN_USUARIO, ADMIN_CLAVE = cargar_configuracion()
+ADMIN_USUARIO = os.getenv('ADMIN_USUARIO', 'admin')  # Valor por defecto si no existe
+ADMIN_CLAVE = os.getenv('ADMIN_CLAVE', 'usst2025')  # Valor por defecto si no existe
 ADMIN_CLAVE_HASH = hashlib.sha256(ADMIN_CLAVE.encode()).hexdigest()
 
 # Variable global para manejar sesión única

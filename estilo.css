@@ -107,13 +107,19 @@ label {
 
 input[type="text"],
 input[type="number"],
-input[type="password"] {
+input[type="password"],
+input[type="email"] {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid #ccc;
     border-radius: 6px;
     font-size: 15px;
     box-sizing: border-box;
+}
+
+/* Email más ancho */
+input[type="email"] {
+    max-width: 500px;
 }
 
 input:focus {
